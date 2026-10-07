@@ -87,6 +87,7 @@ def import_link(job_id, url):
     except Exception as exc:
         shutil.rmtree(folder, ignore_errors=True)
         logging.getLogger('clipa.import').error('Import failed (%s): %s', type(exc).__name__, str(exc))
+        logging.getLogger('clipa.import').error('Storage free bytes: %s', shutil.disk_usage(DATA).free)
         if isinstance(exc, ValueError):
             raise
         reason = str(exc).lower()
@@ -102,7 +103,8 @@ def import_link(job_id, url):
 class SilentLogger:
     def debug(self, msg): pass
     def warning(self, msg): pass
-    def error(self, msg): pass
+    def error(self, msg):
+        logging.getLogger('clipa.downloader').error('%s', msg)
 
 
 def analyze(job_id, video_id, maximum, supplied_key):
