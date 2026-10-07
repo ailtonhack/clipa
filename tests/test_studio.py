@@ -184,3 +184,12 @@ def test_health_is_public_without_exposing_configuration(studio, monkeypatch):
     monkeypatch.setenv('CLIPA_PASSWORD', 'secret-password')
     assert client.get('/api/health').json() == {'status': 'ok'}
     assert client.get('/api/config').status_code == 401
+
+
+def test_railway_https_origin_through_http_proxy(studio):
+    client, *_ = studio
+    response = client.post('/api/import', json={'url': 'invalid'}, headers={'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin'})
+    assert response.status_code == 400
+    assert 'HTTPS' in response.json()['detail']
+    assert client.post('/api/import', json={'url': 'invalid'}, headers={'Origin': 'https://evil.test'}).status_code == 403
+    assert client.post('/api/import', json={'url': 'invalid'}, headers={'Origin': 'https://testserver', 'Sec-Fetch-Site': 'cross-site'}).status_code == 403

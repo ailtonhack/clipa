@@ -1,7 +1,15 @@
 const $=id=>document.getElementById(id);let apiKey='',video=null,busy=false,demoMode=false,segments=[],config=null,activeExport=null;
 const status=t=>$('status').textContent=t;
 const time=n=>Math.floor(n/60).toString().padStart(2,'0')+':'+Math.floor(n%60).toString().padStart(2,'0');
-async function request(path,body,method='POST'){const r=await fetch(path,{method,headers:body instanceof FormData?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:body instanceof FormData?body:JSON.stringify(body)});let result;try{result=await r.json()}catch{throw Error('O servidor não respondeu. Execute o backend do Clipa e abra http://localhost:8000.')}if(!r.ok)throw Error(typeof result.detail==='string'?result.detail:'Revise os dados enviados.');return result}
+async function request(path,body,method='POST'){
+ let r;try{r=await fetch(path,{method,headers:body instanceof FormData?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:body instanceof FormData?body:JSON.stringify(body)})}catch{throw Error('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.')}
+ let result;try{result=await r.json()}catch{
+  if(r.status===403)throw Error('O servidor bloqueou esta solicitação (HTTP 403). A configuração de origem do site precisa ser corrigida.');
+  if(r.status===401)throw Error('Seu acesso expirou. Atualize a página e entre novamente.');
+  throw Error('O servidor retornou uma resposta inesperada (HTTP '+r.status+'). Tente novamente ou verifique os logs da hospedagem.');
+ }
+ if(!r.ok)throw Error(typeof result.detail==='string'?result.detail:'Revise os dados enviados.');return result;
+}
 async function waitJob(id){for(;;){await new Promise(r=>setTimeout(r,1200));const job=await request('/api/jobs/'+id,undefined,'GET');status(job.progress||'Processando…');if(job.status==='done')return job.result;if(job.status==='failed')throw Error(job.error||'O processamento falhou.')}}
 function lock(value){busy=value;for(const id of ['generate','importlink','editcaptions'])$(id).disabled=value||(id==='editcaptions'&&!segments.length);$('file').disabled=value;}
 for(const id of ['settings','settings2'])$(id).onclick=()=>$('modal').showModal();

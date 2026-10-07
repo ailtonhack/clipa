@@ -217,7 +217,11 @@ async def local_access(request: Request, call_next):
     if request.method not in ('GET', 'HEAD', 'OPTIONS'):
         origin = request.headers.get('origin')
         from urllib.parse import urlparse
-        if origin and origin not in (str(request.base_url).rstrip('/'), social.BASE_URL):
+        allowed_origins = {str(request.base_url).rstrip('/'), social.BASE_URL}
+        # Railway terminates TLS before forwarding HTTP to the container.
+        # Keep the exact request authority; do not allow unrelated origins.
+        allowed_origins.add('https://' + request.url.netloc)
+        if origin and origin not in allowed_origins:
             return HTMLResponse('Origem não permitida.', 403)
         if request.headers.get('sec-fetch-site') == 'cross-site':
             return HTMLResponse('Origem não permitida.', 403)
