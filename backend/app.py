@@ -23,7 +23,7 @@ from . import social
 
 POOL = ThreadPoolExecutor(max_workers=2)
 STOP = threading.Event()
-MAX_UPLOAD = 1024 * 1024 * 1024
+MAX_UPLOAD = 10 * 1024 * 1024 * 1024
 
 
 def update_job(job_id, **fields):
@@ -64,7 +64,7 @@ def import_link(job_id, url):
             received = event.get('downloaded_bytes', 0)
             total = event.get('total_bytes') or event.get('total_bytes_estimate')
             if received > MAX_UPLOAD or (total and total > MAX_UPLOAD):
-                raise ValueError('Este vídeo excede o limite de 1 GB.')
+                raise ValueError('Este vídeo excede o limite de 10 GB.')
             update_job(job_id, progress=f'Baixando · {received // 1024 // 1024} MB')
     options = {'outtmpl': str(folder / 'source.%(ext)s'), 'format': 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[ext=m4a]/best[height<=1080]/best', 'merge_output_format': 'mp4', 'noplaylist': True, 'quiet': True, 'no_warnings': True, 'socket_timeout': 30, 'retries': 2, 'max_filesize': MAX_UPLOAD, 'progress_hooks': [progress], 'restrictfilenames': True, 'logger': SilentLogger(), 'js_runtimes': {'node': {}} if shutil.which('node') else {}, 'match_filter': lambda info, **kwargs: 'Transmissões ao vivo não são suportadas.' if info.get('is_live') else 'Vídeo acima de 2 horas.' if info.get('duration', 0) and info['duration'] > 7200 else None}
     try:
@@ -82,7 +82,7 @@ def import_link(job_id, url):
             run(['ffmpeg', '-nostdin', '-y', '-i', str(candidates[0]), '-c:v', 'libx264', '-preset', 'veryfast', '-c:a', 'aac', '-movflags', '+faststart', str(target)])
             candidates[0].unlink()
         if not target.exists() or target.stat().st_size > MAX_UPLOAD:
-            raise ValueError('O vídeo não foi baixado ou excede o limite de 1 GB.')
+            raise ValueError('O vídeo não foi baixado ou excede o limite de 10 GB.')
         return save_video(video_id, target, info.get('title', 'Vídeo importado'))
     except Exception as exc:
         shutil.rmtree(folder, ignore_errors=True)
@@ -310,7 +310,7 @@ async def upload(file: UploadFile = File(...)):
             while part := await file.read(1024*1024):
                 count += len(part)
                 if count > MAX_UPLOAD:
-                    raise ValueError('O limite é 1 GB por vídeo.')
+                    raise ValueError('O limite é 10 GB por vídeo.')
                 handle.write(part)
         return await asyncio.to_thread(save_video, video_id, path, file.filename or 'Vídeo enviado')
     except Exception:

@@ -4,7 +4,7 @@ Esta versão inclui backend Python e interface em português. Implementação pr
 
 ## O que está implementado
 
-- Upload local de vídeos até 1 GB e 2 horas.
+- Upload local de vídeos até 10 GB e 2 horas.
 - Importação de vídeos públicos do YouTube e vídeos/clips públicos da Twitch e Kick usando yt-dlp. Transmissões ao vivo não são suportadas. Downloads dependem da disponibilidade e das restrições de cada provedor.
 - Extração do áudio em partes de cinco minutos, transcrição com timestamps e sugestões de cortes pela fala via OpenAI.
 - Revisão dos tempos dos cortes e edição do texto das legendas.
