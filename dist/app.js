@@ -1,4 +1,6 @@
-const $=id=>document.getElementById(id);let apiKey='',video=null,busy=false,demoMode=false,segments=[],config=null,activeExport=null;
+const $=id=>document.getElementById(id);let apiKey=readSavedKey(),video=null,busy=false,demoMode=false,segments=[],config=null,activeExport=null;
+function readSavedKey(){try{return localStorage.getItem('clipa.openai.apiKey')||''}catch{return ''}}
+function showAIConnected(){if(apiKey){$('connection').style.color='#6aa34c';$('settings2').firstChild.textContent='IA conectada ';}}
 const status=t=>$('status').textContent=t;
 const time=n=>Math.floor(n/60).toString().padStart(2,'0')+':'+Math.floor(n%60).toString().padStart(2,'0');
 async function request(path,body,method='POST'){
@@ -13,7 +15,9 @@ async function request(path,body,method='POST'){
 async function waitJob(id){for(;;){await new Promise(r=>setTimeout(r,1200));const job=await request('/api/jobs/'+id,undefined,'GET');status(job.progress||'Processando…');if(job.status==='done')return job.result;if(job.status==='failed')throw Error(job.error||'O processamento falhou.')}}
 function lock(value){busy=value;for(const id of ['generate','importlink','editcaptions'])$(id).disabled=value||(id==='editcaptions'&&!segments.length);$('file').disabled=value;}
 for(const id of ['settings','settings2'])$(id).onclick=()=>$('modal').showModal();
-$('savekey').onclick=()=>{const value=$('key').value.trim();if(!value.startsWith('sk-')){$('keyerror').textContent='Insira uma chave OpenAI válida.';return}apiKey=value;$('key').value='';$('connection').style.color='#6aa34c';$('settings2').firstChild.textContent='IA conectada ';$('modal').close();status('Chave disponível para esta sessão. Será validada na análise.');};
+$('savekey').onclick=()=>{const value=$('key').value.trim();if(!value.startsWith('sk-')){$('keyerror').textContent='Insira uma chave OpenAI válida.';return}apiKey=value;let saved=false;try{localStorage.setItem('clipa.openai.apiKey',value);saved=true}catch{}$('key').value='';$('connection').style.color='#6aa34c';$('settings2').firstChild.textContent='IA conectada ';$('modal').close();status(saved?'Chave salva neste navegador. Será validada na análise.':'Chave conectada para esta sessão. O navegador não permitiu salvá-la.');};
+$('forgetkey').onclick=()=>{try{localStorage.removeItem('clipa.openai.apiKey')}catch{}apiKey='';$('key').value='';$('connection').style.color='';$('settings2').firstChild.textContent='Conectar IA ';$('keyerror').textContent='Chave removida deste navegador.';};
+showAIConnected();
 function setVideo(value){video=value;segments=[];demoMode=false;$('filename').textContent=video.filename;$('duration').textContent=time(video.duration);$('selected').hidden=false;$('results').hidden=true;$('editcaptions').disabled=true;status('Vídeo pronto para analisar.');}
 async function choose(file){if(busy||!file)return;if(file.size>10*1024*1024*1024)return status('O limite é 10 GB.');lock(true);try{status('Enviando vídeo ao servidor…');const form=new FormData();form.append('file',file);setVideo(await request('/api/upload',form));}catch(e){status(e.message)}finally{lock(false)}}
 $('file').onchange=e=>choose(e.target.files[0]);const drop=$('drop');drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag')};drop.ondragleave=()=>drop.classList.remove('drag');drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');choose(e.dataTransfer.files[0])};
