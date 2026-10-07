@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import json
+import logging
 import os
 import secrets
 import shutil
@@ -83,9 +84,19 @@ def import_link(job_id, url):
         if not target.exists() or target.stat().st_size > MAX_UPLOAD:
             raise ValueError('O vídeo não foi baixado ou excede o limite de 1 GB.')
         return save_video(video_id, target, info.get('title', 'Vídeo importado'))
-    except Exception:
+    except Exception as exc:
         shutil.rmtree(folder, ignore_errors=True)
-        raise ValueError('Falha ao importar. Use um vídeo público de até 2 horas e 1 GB. O provedor pode bloquear downloads; atualize o yt-dlp e confira o link. Não há acesso a conteúdo privado ou protegido.')
+        logging.getLogger('clipa.import').error('Import failed (%s): %s', type(exc).__name__, str(exc))
+        if isinstance(exc, ValueError):
+            raise
+        reason = str(exc).lower()
+        if 'sign in' in reason or 'confirm you' in reason or 'bot' in reason:
+            raise ValueError('O YouTube bloqueou o download pelo servidor e exige verificação. Envie o arquivo de vídeo pelo computador.') from exc
+        if 'private' in reason or 'unavailable' in reason or 'removed' in reason:
+            raise ValueError('Este vídeo está privado, indisponível ou restrito para o servidor.') from exc
+        if 'requested format' in reason:
+            raise ValueError('O provedor não disponibilizou um formato de vídeo compatível para download.') from exc
+        raise ValueError('Não foi possível importar este vídeo. Envie o arquivo pelo computador ou tente outro link público.') from exc
 
 
 class SilentLogger:
